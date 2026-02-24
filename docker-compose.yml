@@ -74,6 +74,13 @@ services:
     networks:
       - internal
     restart: unless-stopped
+    cap_add:
+      - NET_ADMIN  # tcコマンド実行に必須
+    entrypoint: >
+      /bin/sh -c "
+      tc qdisc add dev eth0 root tbf rate 100mbit burst 32kbit latency 100ms && 
+      nginx -g 'daemon off;'
+      "
 
   postgres:
     image: postgres:16-alpine
