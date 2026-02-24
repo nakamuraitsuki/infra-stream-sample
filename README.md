@@ -9,6 +9,17 @@
 2. 色々いじってみましょう。
    （コンテナのリソース制限が異常に厳しいのは、スケールアウトの演習を目的としているためです）
 
+### パッケージ導入
+backendにて
+```bash
+go mod tidy
+```
+
+frontendにて
+```bash
+npm install
+```
+
 ### 起動方法
 ```bash
 docker compose up -d

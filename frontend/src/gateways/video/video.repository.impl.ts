@@ -114,7 +114,6 @@ export class VideoRepositoryImpl implements IVideoRepository {
     }
   }
 
-  async uploadSource(id: VideoId, file: File, onProgress?: (progress: number) => void): Promise<Result<void, VideoError>>;
   async uploadSource(id: VideoId, file: File, onProgress: (progress: number) => void = () => {}): Promise<Result<void, VideoError>> {
     const PROMISE_LIMIT = 3;
     try {
