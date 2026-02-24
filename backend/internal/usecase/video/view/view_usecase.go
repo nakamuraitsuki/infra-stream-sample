@@ -3,7 +3,6 @@ package view
 import (
 	"context"
 	"errors"
-	"io"
 
 	video_domain "example.com/m/internal/domain/video"
 	"example.com/m/internal/usecase/video/query"
@@ -29,7 +28,7 @@ type VideoViewingUseCaseInterface interface {
 	GetPlaybackInfo(ctx context.Context, videoID uuid.UUID) (*PlaybackInfo, error)
 
 	// GetVideoStream returns a readable video stream and its MIME type.
-	GetVideoStream(ctx context.Context, videoID uuid.UUID, objectPath string, byteRangeQuery *query.VideoRangeQuery) (io.ReadCloser, GetVideoStreamMeta, string, error)
+	GetVideoStream(ctx context.Context, videoID uuid.UUID, objectPath string) (string, error)
 }
 
 type VideoViewingUseCase struct {

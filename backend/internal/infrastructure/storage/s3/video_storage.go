@@ -15,15 +15,17 @@ import (
 )
 
 type videoStorage struct {
-	client        *s3.Client
-	presignClient *s3.PresignClient
-	bucketName    string
+  client              *s3.Client
+  internalPresignClient *s3.PresignClient // アップロード用（内部NW向け）
+  publicPresignClient   *s3.PresignClient   // 視聴用（NGINX/外部公開向け）
+  bucketName          string
 }
 
 func NewVideoStorage(clientSet *S3ClientSet, cfg Config) video.Storage {
 	return &videoStorage{
 		client:        clientSet.Client,
-		presignClient: clientSet.PresignClient,
+		internalPresignClient: s3.NewPresignClient(clientSet.Client),
+		publicPresignClient: clientSet.PresignClient,
 		bucketName:    cfg.BucketName,
 	}
 }
@@ -47,7 +49,8 @@ func (s *videoStorage) GenerateUploadPartURL(
 	partNumber int32,
 ) (string, error) {
 	// NOTE: 有効期限15分の署名付きURLを生成
-	presignedReq, err := s.presignClient.PresignUploadPart(ctx, &s3.UploadPartInput{
+	// アップロードはフロントエンド側に任せる想定
+	presignedReq, err := s.publicPresignClient.PresignUploadPart(ctx, &s3.UploadPartInput{
 		Bucket:     aws.String(s.bucketName),
 		Key:        aws.String(key),
 		UploadId:   aws.String(sessionID),
@@ -91,7 +94,8 @@ func (s *videoStorage) SaveStream(ctx context.Context, streamKey string, data io
 }
 
 func (s *videoStorage) GenerateTemporaryAccessURL(ctx context.Context, streamKey string, expiresDuration time.Duration) (string, error) {
-	presignedReq, err := s.presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+	// NOTE: Proxyからの X-Accell-Redirect を想定し、Nginxを含む内部NWむけの PresignClient を使用して署名付きURLを生成
+	presignedReq, err := s.internalPresignClient.PresignGetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(streamKey),
 	}, s3.WithPresignExpires(expiresDuration))
