@@ -1,0 +1,19 @@
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px;
+  text-align: center;
+  background-color: rgba(239, 68, 68, 0.05); /* ほんのり赤 */
+  border-radius: 12px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  margin: 20px;
+}
+
+.errorContainer p {
+  color: #ef4444;
+  font-weight: 500;
+  margin: 0;
+}

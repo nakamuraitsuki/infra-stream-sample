@@ -1,0 +1,27 @@
+.card {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--color-surface);
+}
+
+.thumbnail {
+  width: 400px;
+  flex-shrink: 0;
+  background-color: var(--color-background);
+}
+
+.cardBody {
+  padding: 0.5rem 0.75rem;
+}
+
+.description {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  color: var(--color-text-secondary);
+}

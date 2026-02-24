@@ -1,0 +1,38 @@
+.card {
+  width: 100%;
+  display: flex;
+  cursor: pointer;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--color-bg);
+}
+
+.thumbnail {
+  width: 200px;
+  flex-shrink: 0;
+  background-color: var(--color-background);
+}
+
+.cardBody {
+  padding: 0.5rem 0.75rem;
+}
+
+.meta {
+  padding: 0.5rem 0;
+}
+
+.title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.2;
+  color: var(--color-text-primary);
+}
+
+.description {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.2;
+  color: var(--color-text-secondary);
+}

@@ -1,0 +1,180 @@
+services:
+  backend-http:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.http
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    cap_add:
+      - NET_ADMIN
+    deploy:
+      resources:
+      # NOTE: 演習のための極限的な制限
+      # 実際の運用では適切な分量を与えるべき
+        limits:
+          cpus: 0.01
+          memory: 128M
+    container_name: http-backend
+    env_file:
+      - ./backend/.env
+    networks:
+      - internal
+    restart: unless-stopped
+    # NOTE: 帯域リソースを現実的なラインに絞る
+    entrypoint: >
+      /bin/sh -c "
+      tc qdisc add dev eth0 root tbf rate 100mbit burst 15kb latency 50ms && 
+      ./app-http
+      "
+
+  backend-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: 2.0
+          memory: 512M
+    cpuset: "0-1"
+    container_name: worker-backend
+    env_file:
+      - ./backend/.env
+    networks:
+      - internal
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-http
+    networks:
+      - internal
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: db-postgres
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: appdb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # cf. https://hub.docker.com/_/postgres#initialization-scripts
+      - ./backend/deployments/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: queue-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: storage-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: password
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: app-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    networks:
+      - internal
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO...';
+      while ! /usr/bin/mc alias set myminio http://minio:9000 $${S3_ACCESS_KEY} $${S3_SECRET_KEY} > /dev/null 2>&1; do
+        sleep 1;
+      done;
+
+      /usr/bin/mc mb --ignore-existing myminio/$${S3_BUCKET};
+
+      # 標準入力からCORS設定を流し込む（EOFエラー回避）
+      echo '{\"CORSRules\": [{\"AllowedOrigins\": [\"*\"], \"AllowedMethods\": [\"GET\",\"PUT\",\"POST\",\"HEAD\"], \"AllowedHeaders\": [\"*\"], \"ExposeHeaders\": [\"ETag\"]}]}' | /usr/bin/mc cors set myminio/$${S3_BUCKET} /dev/stdin;
+
+      echo 'MinIO initialization completed.';
+      exit 0;
+      "
+  simulator:
+    build:
+      context: ./simulator
+    container_name: simulator
+    depends_on:
+      frontend:
+        condition: service_started
+    environment:
+      - MAX_WORKERS=20
+      - BASE_URL=http://frontend
+    networks:
+      - internal
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 128M
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  minio-data:
