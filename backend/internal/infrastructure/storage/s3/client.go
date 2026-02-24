@@ -12,8 +12,8 @@ import (
 )
 
 type S3ClientSet struct {
-	Client        *s3.Client
-	PresignClient *s3.PresignClient
+	Client        *s3.Client        // 内部クライアント
+	PresignClient *s3.PresignClient // 外部署名用
 }
 
 func NewClient(ctx context.Context, cfg Config) (*S3ClientSet, error) {
