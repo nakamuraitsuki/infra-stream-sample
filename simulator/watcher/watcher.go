@@ -28,7 +28,10 @@ type PlaybackInfoResponse struct {
 }
 
 func SimulateWatcher(ctx context.Context, id int, baseURL string) error {
-	client := &http.Client{Timeout: 20 * time.Second}
+	client := &http.Client{
+		Timeout: 20 * time.Second,
+		Transport: &dockerRewriteTransport{rt: http.DefaultTransport},
+	}
 
 	// get public videos
 	getPublicParams := map[string]string{"limit": "10"}
@@ -78,16 +81,18 @@ func watchHLS(
 	userID int,
 ) error {
 	fullPlaylistURL := baseURL + playbackURL
-	body, err := fetchURL(ctx, client, fullPlaylistURL, nil)
+
+	req, _ := http.NewRequestWithContext(ctx, "GET", fullPlaylistURL, nil)
+	resp, err := client.Do(req)
 	if err != nil {
+		fmt.Printf("User %d: Error fetching playlist: %v\n", userID, err)
 		return err
 	}
+	defer resp.Body.Close() 
 
-	u, err := url.Parse(fullPlaylistURL)
-	if err != nil {
-		return err
-	}
+	finalURL := resp.Request.URL
 
+	body, _ := io.ReadAll(resp.Body)
 	playlist, listType, err := m3u8.Decode(*bytes.NewBuffer(body), true)
 	if err != nil {
 		return err
@@ -100,12 +105,12 @@ func watchHLS(
 				continue
 			}
 
-			segURL, err := u.Parse(seg.URI)
+			segURL, err := url.Parse(seg.URI)
 			if err != nil {
 				fmt.Printf("User %d: Error parsing segment URL: %v\n", userID, err)
 				continue
 			}
-			finalSegURL := segURL.String()
+			finalSegURL := finalURL.ResolveReference(segURL).String()
 
 			select {
 			case <-ctx.Done():

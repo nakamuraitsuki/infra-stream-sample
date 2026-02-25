@@ -83,8 +83,11 @@ func (t *ffmpegTranscoder) Transcode(
 				"-hls_segment_filename", segmentPattern,
 				playlistPath,
 			)
-			if out, err := cmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("ffmpeg error: %w, output: %s", err, string(out))
+			cmd.Stderr = os.Stderr
+			cmd.Stdout = os.Stdout
+
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("ffmpeg error: %w", err)
 			}
 
 			return nil
