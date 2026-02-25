@@ -1,26 +1,7 @@
-# infra-stream-temp
-
-## 利用想定
-- 大規模配信のインフラ的最適化の演習
-- 動画配信サイト開発の雛形
-
-## インフラ演習として使う
-1. テンプレートリポジトリなので、右上のUseより自分のリポジトリに複製。
-2. 色々いじってみましょう。
-   （コンテナのリソース制限が異常に厳しいのは、スケールアウトの演習を目的としているためです）
-
-### パッケージ導入
-backendにて
+# infra-stream-sample
+テンプレもとの変更反映方法
 ```bash
-go mod tidy
-```
-
-frontendにて
-```bash
-npm install
-```
-
-### 起動方法
-```bash
-docker compose up -d
+git remote add upstream https://github.com/nakamuraitsuki/infra-stream-temp.git
+git fetch upstream
+git merge upstream/main --allow-unrelated-histories --squash
 ```
